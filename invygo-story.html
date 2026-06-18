@@ -394,21 +394,37 @@ function handleImg(i, input) {
 function downloadPoster() {
   var btn = document.getElementById('dl-btn');
   btn.disabled = true; btn.textContent = 'Generating...';
+
   // Hide safe zone guides
   document.getElementById('safe-top').style.display = 'none';
   document.getElementById('safe-bot').style.display = 'none';
+
+  // KEY FIX: temporarily remove the CSS scale transform so html2canvas
+  // always sees the poster at its true 540×960 size, not the scaled-down version.
+  // This makes the export identical regardless of what screen size it runs on.
+  var scaler = document.getElementById('scaler');
+  var savedTransform = scaler.style.transform;
+  var savedHeight    = scaler.style.height;
+  scaler.style.transform = 'none';
+  scaler.style.height    = '960px';
+
   setTimeout(function(){
     var poster = document.getElementById('poster');
     html2canvas(poster, {
       scale:2, useCORS:true, allowTaint:true, backgroundColor:'#ffffff',
-      logging:false, width:540, height:960, windowWidth:840, scrollX:0, scrollY:0, imageTimeout:15000,
+      logging:false, width:540, height:960,
+      windowWidth:1200, windowHeight:1200,
+      scrollX:0, scrollY:0, imageTimeout:15000,
       onclone: function(doc){
         var p = doc.getElementById('poster');
-        p.style.width='540px'; p.style.height='960px'; p.style.borderRadius='0';
-        p.style.boxShadow='none'; p.style.overflow='hidden'; p.style.transform='none';
+        p.style.width='540px'; p.style.height='960px';
+        p.style.borderRadius='0'; p.style.boxShadow='none';
+        p.style.overflow='hidden'; p.style.transform='none';
+        var sc2 = doc.getElementById('scaler');
+        if(sc2){ sc2.style.transform='none'; sc2.style.height='960px'; }
         doc.getElementById('safe-top').style.display='none';
         doc.getElementById('safe-bot').style.display='none';
-        // Pre-bake car images — fix object-fit:contain for export
+        // Pre-bake car images to fix object-fit:contain
         doc.querySelectorAll('.pc-img').forEach(function(box){
           var img = box.querySelector('img'); if(!img) return;
           var BW = box.offsetWidth||158, BH = 92;
@@ -425,25 +441,31 @@ function downloadPoster() {
         });
       }
     }).then(function(canvas){
+      // Restore transform before doing anything else
+      scaler.style.transform = savedTransform;
+      scaler.style.height    = savedHeight;
+      document.getElementById('safe-top').style.display='';
+      document.getElementById('safe-bot').style.display='';
+
       canvas.toBlob(function(blob){
         var url=URL.createObjectURL(blob);
         var a=document.createElement('a'); a.href=url; a.download='invygo-story-1080x1920.png';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(function(){URL.revokeObjectURL(url);},2000);
-        document.getElementById('safe-top').style.display='';
-        document.getElementById('safe-bot').style.display='';
         btn.disabled=false;
         btn.innerHTML='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Download 1080&#xD7;1920';
         showToast('Saved to Downloads');
       },'image/png');
     }).catch(function(err){
       console.error(err);
+      scaler.style.transform = savedTransform;
+      scaler.style.height    = savedHeight;
       document.getElementById('safe-top').style.display='';
       document.getElementById('safe-bot').style.display='';
       btn.disabled=false; btn.textContent='Download 1080&#xD7;1920';
       showToast('Error - try again');
     });
-  },80);
+  },120);
 }
 
 function showToast(msg){

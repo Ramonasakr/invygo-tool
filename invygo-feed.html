@@ -246,14 +246,22 @@ function handleImg(i,input){
 function downloadPoster(){
   var btn=document.getElementById('dl-btn');
   btn.disabled=true;btn.textContent='Generating...';
+  // Remove scale transform before capture so export is always correct size
+  var scaler=document.getElementById('scaler');
+  var savedTransform=scaler.style.transform;
+  var savedHeight=scaler.style.height;
+  scaler.style.transform='none';
+  scaler.style.height='675px';
   setTimeout(function(){
     var poster=document.getElementById('poster');
     html2canvas(poster,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',
-      logging:false,width:540,height:675,windowWidth:840,scrollX:0,scrollY:0,imageTimeout:15000,
+      logging:false,width:540,height:675,windowWidth:1200,windowHeight:1200,scrollX:0,scrollY:0,imageTimeout:15000,
       onclone:function(doc){
         var p=doc.getElementById('poster');
         p.style.width='540px';p.style.height='675px';p.style.borderRadius='0';
-        p.style.boxShadow='none';p.style.overflow='hidden';p.style.position='relative';p.style.transform='none';
+        p.style.boxShadow='none';p.style.overflow='hidden';p.style.transform='none';
+        var sc2=doc.getElementById('scaler');
+        if(sc2){sc2.style.transform='none';sc2.style.height='675px';}
         doc.querySelectorAll('.pc-img').forEach(function(box){
           var img=box.querySelector('img');if(!img)return;
           var BW=box.offsetWidth||158,BH=82;
@@ -269,6 +277,8 @@ function downloadPoster(){
         });
       }
     }).then(function(canvas){
+      scaler.style.transform=savedTransform;
+      scaler.style.height=savedHeight;
       canvas.toBlob(function(blob){
         var url=URL.createObjectURL(blob);
         var a=document.createElement('a');a.href=url;a.download='invygo-feed-1080x1350.png';
@@ -279,9 +289,11 @@ function downloadPoster(){
         showToast('Saved to Downloads');
       },'image/png');
     }).catch(function(err){
+      scaler.style.transform=savedTransform;
+      scaler.style.height=savedHeight;
       console.error(err);btn.disabled=false;btn.textContent='Download 1080&#xD7;1350';showToast('Error - try again');
     });
-  },80);
+  },120);
 }
 
 function showToast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},3000);}
